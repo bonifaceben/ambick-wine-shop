@@ -1,0 +1,72 @@
+<script type="module">
+  import { db } from "./firebase.js";
+  import {
+    doc, setDoc, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const editId = urlParams.get("id");
+
+  const titleEl = document.getElementById("title");
+  const descEl = document.getElementById("description");
+  const imageFile = document.getElementById("imageFile");
+  const pageTitle = document.getElementById("pageTitle");
+
+  // If editing, show existing data
+  if (editId) {
+    pageTitle.innerText = "Edit Menu Item";
+
+    const docRef = doc(db, "menu", editId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      titleEl.value = data.title;
+      descEl.value = data.description;
+    }
+  }
+
+  // Upload image to PHP
+  async function uploadImageLocally(file) {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const response = await fetch("upload.php", {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await response.json();
+    return result.status === "success" ? result.url : null;
+  }
+
+  // Submit the form
+  document.getElementById("menuForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const item = {
+      title: titleEl.value,
+      description: descEl.value,
+    };
+
+    // Upload image if selected
+    if (imageFile.files.length > 0) {
+      const imageURL = await uploadImageLocally(imageFile.files[0]);
+      if (imageURL) item.image = imageURL;
+    }
+
+    // Save to Firestore
+    await setDoc(
+      editId ? doc(db, "menu", editId) : doc(db, "menu", Date.now().toString()),
+      item,
+      { merge: true }
+    );
+
+    alert("Saved successfully!");
+    window.location.href = "dashboard.html";
+  });
+
+  window.goBack = function () {
+    window.location.href = "dashboard.html";
+  };
+</script>
